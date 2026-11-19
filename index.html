@@ -69,7 +69,10 @@
   </div>
 
   <div id="presetManager" class="card hidden">
-    <h3>Danh sách Phân loại &amp; Chu vi</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <h3 style="margin:0;">Danh sách Phân loại &amp; Chu vi</h3>
+      <button type="button" class="btn-small btn-danger" onclick="clearAllPresets()">Xóa tất cả</button>
+    </div>
     <div id="presetList"></div>
 
     <h3 style="margin-top: 14px;">Thêm / Cập nhật phân loại</h3>
@@ -207,12 +210,16 @@
     function renderPresetList() {
       const list = document.getElementById("presetList");
       list.innerHTML = "";
+      if (presets.length === 0) {
+        list.innerHTML = "<div style='color:#666;font-size:13px;padding:8px 0;'>Chưa có phân loại nào.</div>";
+        return;
+      }
       presets.forEach((p, idx) => {
         const div = document.createElement("div");
         div.className = "preset-item";
         div.innerHTML = `
           <span><strong>[${p.type}]</strong> ${p.name} - <b>${Number(p.circ).toFixed(2)} mm</b></span>
-          <button class="btn-small btn-danger" onclick="deletePreset(${idx})">Xóa</button>
+          <button type="button" class="btn-small btn-danger" onclick="deletePreset(${idx})">Xóa</button>
         `;
         list.appendChild(div);
       });
@@ -223,11 +230,12 @@
       ps.style.color = "#555";
       ps.innerText = "Đang lưu danh sách...";
       try {
-        await fetch(PRESETS_URL, {
+        const res = await fetch(PRESETS_URL, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(presets)
+          body: JSON.stringify({ initialized: true, items: presets })
         });
+        if (!res.ok) throw new Error("HTTP " + res.status);
         ps.style.color = "green";
         ps.innerText = "Đã cập nhật danh sách phân loại!";
         renderPresetList();
@@ -262,12 +270,24 @@
       await syncPresetsToFirebase();
     }
 
+    async function clearAllPresets() {
+      presets = [];
+      await syncPresetsToFirebase();
+    }
+
     window.onload = async () => {
       try {
         const pRes = await fetch(PRESETS_URL);
         const pData = await pRes.json();
-        if (Array.isArray(pData) && pData.length > 0) {
+        if (Array.isArray(pData)) {
           presets = pData.map(p => ({
+            type: removeAccents(p.type),
+            name: removeAccents(p.name),
+            circ: Number(p.circ)
+          }));
+        } else if (pData && pData.initialized) {
+          const arr = Array.isArray(pData.items) ? pData.items : [];
+          presets = arr.map(p => ({
             type: removeAccents(p.type),
             name: removeAccents(p.name),
             circ: Number(p.circ)
@@ -329,11 +349,12 @@
       };
 
       try {
-        await fetch(CONFIG_URL, {
+        const res = await fetch(CONFIG_URL, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
+        if (!res.ok) throw new Error("HTTP " + res.status);
         status.style.color = "green";
         status.innerText = isTest ? "Đã gửi lệnh in thử!" : "Đã lưu cấu hình thành công!";
       } catch (e) {
