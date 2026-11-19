@@ -1,0 +1,53 @@
+# BIÊN BẢN BÀN GIAO CÔNG VIỆC — DỰ ÁN CẦU NỐI IN NHIỆT BORGWALDT DD60A
+
+**Ngày bàn giao:** 20/11/2026  
+**Repository GitHub:** `https://github.com/ngocvukh/dd60a-web`  
+**Link Web QR (GitHub Pages):** `https://ngocvukh.github.io/dd60a-web/`  
+**Firebase Realtime Database:** `https://dd60a-244ce-default-rtdb.asia-southeast1.firebasedatabase.app` *(Singapore `asia-southeast1`)*
+
+---
+
+## 1. Các hạng mục đã hoàn thành & nghiệm thu
+
+| Hạng mục | Trạng thái | Chi tiết |
+| :--- | :---: | :--- |
+| **Firebase Realtime Database** | Hoàn tất | Đã tạo database, cấu hình Rules đọc/ghi lâu dài cho `/dd60a` và `/dd60a_presets` (không giới hạn 30 ngày). |
+| **Web cấu hình qua QR** | Hoàn tất | Deploy [index.html](file:///d:/DD%2060%20A/index.html) lên GitHub Pages (`https://ngocvukh.github.io/dd60a-web/`). |
+| **Ảnh nhãn QR để in** | Hoàn tất | Tạo sẵn file [QR_DD60A.png](file:///d:/DD%2060%20A/QR_DD60A.png) (`680 x 830 px`) gồm mã QR Web + thông tin Wi-Fi `DD60A-Setup` (`12345678`, `http://192.168.4.1`). |
+| **Firmware ESP32** | Hoàn tất & Đã nạp | Đã biên dịch và nạp [dd60a_bridge.ino](file:///d:/DD%2060%20A/dd60a_bridge/dd60a_bridge.ino) lên mạch ESP32 (`ESP32-D0WD-V3`) qua cổng `COM10`. |
+| **Tài liệu hướng dẫn** | Hoàn tất | Đã tách gọn thành 4 hạng mục trong `huong_dan/` và mục lục tại [HUONG_DAN_TRIEN_KHAI.md](file:///d:/DD%2060%20A/HUONG_DAN_TRIEN_KHAI.md). |
+
+---
+
+## 2. Tính năng đã lập trình trong phiên làm việc
+
+1. **Xử lý số liệu & Định dạng phiếu in (100% ASCII, tiết kiệm giấy 58mm):**
+   - Nhận dữ liệu từ DD60A (`2400 baud, SERIAL_7N2`, khung `0x02..0x03`, `XXXXXX / 10000.0` mm).
+   - Quy đổi `% = (giaTriDo / (chuVi / PI)) * 100` và làm tròn chuẩn toán học cho cả `mm` và `%` theo `dec` (`0`–`4`).
+   - Khi chưa có chu vi từ Web (`circ` là `null` / `<= 0`), in `LOAI: null` (hoặc `LOAI: <Loại> (null)`) và **không tính `%`** (chỉ in `mm` + `COEFFICIENT OF VARIATION (V.C.)`).
+   - In Font B, thu hẹp giãn dòng, ghép **2 cột** cho danh sách mẫu (`01:5.79|74.24%`), in `MAX`/`MIN`/`MEAN`/`STD` cùng định dạng `mm|%`, và dòng cuối `COEFFICIENT OF VARIATION (V.C.): ...%` trước khi cắt giấy (`GS V 66 0`).
+2. **Gom mẫu theo loạt & kiểm tra STT:**
+   - Gom toàn bộ mẫu đo (`MAX_SAMPLES = 150`) và chỉ in trọn phiếu khi nhận gói kết thúc `FF05` (có timeout dự phòng `800 ms` sau `FF01`–`FF04`).
+   - Nếu nhận `0000` mới hoặc `sampleNum <= lastSampleNum` khi loạt cũ chưa kết thúc, ESP32 tự in phiếu cũ kèm cảnh báo `! CANH BAO: Mau da do chua duoc in truoc !` rồi mới lưu mẫu mới.
+3. **Captive Portal `DD60A-Setup` (`192.168.4.1`) & Lưu bền vững NVS:**
+   - Đổi Wi-Fi (kèm quét Wi-Fi xung quanh không xung đột Core 0) và chỉnh cấu hình máy in Citizen (đủ 8 mức Baud `1200`–`115200`, `7/8 bit`, `Parity None/Even/Odd`, `X-ON/X-OFF / None`) trực tiếp trên Web nội bộ mà không cần nạp lại code.
+   - Mặc định cổng máy in đặt sẵn `2400 bps, 7-N-1, X-ON/X-OFF` khớp với tờ Self-Test của Citizen CT-S310II.
+   - Toàn bộ cấu hình Wi-Fi, cổng máy in và thông số bản in lưu trong Flash NVS (`Preferences`), **không bị mất khi mất điện** và vẫn in Offline bình thường khi rớt Wi-Fi.
+4. **Web cấu hình (`index.html`):**
+   - Tự động bỏ dấu tiếng Việt (`removeAccents()`), cho phép để trống phân loại/chu vi, nhập tay chu vi, và quản lý danh sách phân loại (thêm/sửa/xóa vĩnh viễn với `{ initialized: true, items: [...] }` + nút `Xóa tất cả`).
+
+---
+
+## 3. Kết quả kiểm thử đã xác minh
+
+- **Kiểm thử trên phần cứng ESP32 thật (`COM10`):**
+  - ESP32 kết nối Wi-Fi thành công, đồng bộ giờ thực tế NTP (`20/11/2026 00:09`).
+  - Đọc được cấu hình lưu từ Web qua Firebase (`Test`, `Dau loc - Nhap tay (24.50mm)`), tự động reset cờ `"testPrint": false` và xuất đúng định dạng phiếu in ra `Serial` (`COM10`).
+
+---
+
+## 4. Việc cần làm tiếp theo (khi có đủ linh kiện)
+
+1. Lắp **2x module MAX3232 (3.3V)** theo sơ đồ trong [03_LAP_DAT_PHAN_CUNG.md](file:///d:/DD%2060%20A/huong_dan/03_LAP_DAT_PHAN_CUNG.md).
+2. Cắm vào máy **Borgwaldt DD60A** và **Citizen CT-S310II**, thực hiện test đo thật và cắt giấy theo [04_KIEM_THU_VA_XU_LY_SU_CO.md](file:///d:/DD%2060%20A/huong_dan/04_KIEM_THU_VA_XU_LY_SU_CO.md).
+3. In file [QR_DD60A.png](file:///d:/DD%2060%20A/QR_DD60A.png) dán tại vị trí đo.
