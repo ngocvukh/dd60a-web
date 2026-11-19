@@ -127,7 +127,7 @@
 
       const nullOpt = document.createElement("option");
       nullOpt.value = "__NULL__";
-      nullOpt.textContent = "-- Để trống (Không tính %) --";
+      nullOpt.textContent = "";
       select.appendChild(nullOpt);
 
       const filtered = presets.filter(p => p.type === currentType);
