@@ -140,8 +140,6 @@
       <div id="qrModalNotice" style="text-align:center;font-size:13px;color:#137333;font-weight:bold;margin-bottom:6px;"></div>
       <canvas id="qrCanvas" width="600" height="740"></canvas>
       <div class="qr-options">
-        <label class="qr-opt-label"><input type="checkbox" id="qrIncludeSample" onchange="refreshActiveQrModal()"> Kèm Tên mẫu đang nhập</label>
-        <label class="qr-opt-label"><input type="checkbox" id="qrIncludeName" onchange="refreshActiveQrModal()"> Kèm Người đo đang nhập</label>
         <label class="qr-opt-label"><input type="checkbox" id="qrIncludeDec" onchange="refreshActiveQrModal()"> Kèm số thập phân</label>
       </div>
       <div id="qrUrlBox" class="qr-url-box"></div>
@@ -496,14 +494,6 @@
 
     function getActiveQrOpts() {
       const opts = {};
-      if (document.getElementById("qrIncludeSample").checked) {
-        const s = removeAccents(document.getElementById("sample").value);
-        if (s) opts.sample = s;
-      }
-      if (document.getElementById("qrIncludeName").checked) {
-        const n = removeAccents(document.getElementById("name").value);
-        if (n) opts.name = n;
-      }
       if (document.getElementById("qrIncludeDec").checked) {
         const parsedDec = parseInt(document.getElementById("dec").value, 10);
         opts.dec = Math.min(4, Math.max(0, isNaN(parsedDec) ? 2 : parsedDec));
@@ -515,8 +505,6 @@
       const p = presets[idx];
       if (!p) return;
       activeQrPreset = { ...p };
-      document.getElementById("qrIncludeSample").checked = false;
-      document.getElementById("qrIncludeName").checked = false;
       document.getElementById("qrIncludeDec").checked = false;
       document.getElementById("qrModalTitle").innerText = `MÃ QR: [${typeLabelVi(p.type)}] ${p.name}`;
       document.getElementById("qrModalNotice").innerText = justCreated
@@ -682,12 +670,8 @@
       }
 
       const base = currentData || {};
-      const sampleVal = params.has("sample")
-        ? (removeAccents(params.get("sample")) || null)
-        : (base.sample || null);
-      const nameVal = params.has("name")
-        ? (removeAccents(params.get("name")) || null)
-        : (base.name || null);
+      const sampleVal = null;
+      const nameVal = null;
 
       let decVal = (typeof base.dec === "number") ? Math.min(4, Math.max(0, base.dec)) : 2;
       if (params.has("dec")) {
@@ -750,31 +734,8 @@
         });
         if (!res.ok) throw new Error("HTTP " + res.status);
 
-        applyConfigToForm(payload);
-
-        const typeText = payload.circ
-          ? `${escapeHtml(typeLabelVi(payload.type))} - ${escapeHtml(payload.subType)} (<b>${Number(payload.circ).toFixed(2)} mm</b>)`
-          : "Chưa có chu vi (chỉ in mm)";
-
-        showQrBanner("banner-ok", `
-          <div class="banner-title">✅ ĐÃ TỰ ĐỘNG ĐẨY CẤU HÌNH LÊN ESP32</div>
-          <div class="banner-meta">
-            <div><b>Loại / Phân loại:</b> ${typeText}</div>
-            <div><b>Tên mẫu (SAMPLE):</b> ${escapeHtml(payload.sample || "(Để trống)")}</div>
-            <div><b>Người đo (NAME):</b> ${escapeHtml(payload.name || "(Để trống)")}</div>
-            <div><b>Số thập phân:</b> ${escapeHtml(payload.dec)}${isTest ? " | <b>Đã gửi lệnh in thử!</b>" : ""}</div>
-          </div>
-          <div class="banner-note">ESP32 tự nhận trong ~3 giây (kiểm tra màn hình OLED). Bạn vẫn có thể sửa thêm ở form bên dưới.</div>
-          <div class="banner-actions">
-            <button type="button" class="btn btn-test" onclick="saveConfig(true)">In thử ngay</button>
-            <button type="button" class="btn btn-secondary" onclick="hideQrBanner()">Đóng</button>
-          </div>
-        `);
-
-        try {
-          window.history.replaceState({}, "", window.location.pathname);
-        } catch (err) { console.warn(err); }
-
+        showQrBanner("banner-ok", `<div class="banner-title">✅ Đã đẩy lên ESP32! Đang chuyển hướng...</div>`);
+        window.location.replace("https://www.google.com");
         return payload;
       } catch (e) {
         console.error(e);

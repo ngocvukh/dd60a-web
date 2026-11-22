@@ -57,8 +57,8 @@
 2. **Mã QR đẩy nhanh từng Phân loại (Sinh tự động ngay trên Web):**
    - Trong Web cấu hình, bấm **`QUẢN LÝ PHÂN LOẠI & MÃ QR`**.
    - Ngay khi bấm **`+ THÊM / CẬP NHẬT PHÂN LOẠI`**, Web sẽ tự động tạo sẵn **1 mã QR riêng** cho phân loại đó (kèm tên Loại, Phân loại và Chu vi mm), hoặc bấm nút **`Mã QR`** ở từng dòng để xem lại / **`In tất cả QR`** để in hàng loạt ra khổ A4 dán tại bàn đo.
-   - Khi người đo dùng **Camera điện thoại / Zalo** quét mã QR của một phân loại: trình duyệt mở link `?auto=1&type=...&subType=...&circ=...`, Web tự động đẩy **Loại + Phân loại + Chu vi** lên Firebase (giữ nguyên **Tên mẫu**, **Người đo** và **Số thập phân** đang dùng), hiện thông báo xác nhận màu xanh và ESP32 tự cập nhật sau ~3 giây — **không cần sửa lại bất kỳ dòng code ESP32 nào**.
-   - *(Mẹo: Nếu muốn tem QR cố định cả Tên mẫu hoặc Người đo, tick thêm ô `Kèm Tên mẫu đang nhập` / `Kèm Người đo đang nhập` trước khi tải ảnh PNG hoặc in tem).*
+   - Khi người đo dùng **Camera điện thoại / Zalo** quét mã QR của một phân loại: trình duyệt mở link `?auto=1&type=...&subType=...&circ=...`, Web tự động xóa trống **Tên mẫu (`null`)** và **Người đo (`null`)**, đẩy **Loại + Phân loại + Chu vi** (giữ số thập phân) lên Firebase để ESP32 tự cập nhật sau ~3 giây, rồi tự động chuyển hướng sang `https://www.google.com` — **không cần sửa lại bất kỳ dòng code ESP32 nào**.
+   - *(Mẹo: Nếu muốn tem QR cố định thêm số chữ số thập phân, tick ô `Kèm số thập phân` trước khi tải ảnh PNG hoặc in tem).*
 
 ---
 

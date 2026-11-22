@@ -37,7 +37,7 @@
    - Toàn bộ cấu hình Wi-Fi, cổng máy in và thông số bản in lưu trong Flash NVS (`Preferences`), **không bị mất khi mất điện** và vẫn in Offline bình thường khi rớt Wi-Fi.
 4. **Web cấu hình (`index.html` + `qrcode.js`) — Giữ nguyên 100% firmware ESP32:**
    - Tự động bỏ dấu tiếng Việt (`removeAccents()`), cho phép để trống phân loại/chu vi, nhập tay chu vi, và quản lý danh sách phân loại (thêm/sửa/xóa vĩnh viễn với `{ initialized: true, items: [...] }` + nút `Xóa tất cả`).
-   - **Sinh mã QR tự động & Quét đẩy nhanh:** Mỗi khi thêm/cập nhật phân loại (hoặc bấm `Mã QR` trên từng dòng), Web tự tạo tem QR gắn nhãn (`Loại`, `Phân loại`, `Chu vi mm`), cho phép tải ảnh PNG, in tem lẻ hoặc in tất cả QR khổ A4. Khi người đo quét bằng Camera/Zalo (`?auto=1&type=...&subType=...&circ=...`), Web tự động gộp với `sample`/`name`/`dec` hiện có và đẩy thẳng lên `/dd60a.json` cho ESP32 tự cập nhật trong ~3 giây, vẫn giữ nguyên form chỉnh tay bên dưới.
+   - **Sinh mã QR tự động & Quét đẩy nhanh:** Mỗi khi thêm/cập nhật phân loại (hoặc bấm `Mã QR` trên từng dòng), Web tự tạo tem QR gắn nhãn (`Loại`, `Phân loại`, `Chu vi mm`), cho phép tải ảnh PNG, in tem lẻ hoặc in tất cả QR khổ A4. Khi người đo quét bằng Camera/Zalo (`?auto=1&type=...&subType=...&circ=...`), Web tự động đặt trống `sample: null` và `name: null`, đẩy cấu hình lên `/dd60a.json` cho ESP32 tự cập nhật trong ~3 giây, rồi tự động chuyển hướng sang `https://www.google.com` (truy cập trực tiếp link gốc vẫn dùng bình thường giao diện Web nhập tay).
 
 ---
 
