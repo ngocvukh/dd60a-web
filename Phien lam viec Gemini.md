@@ -118,9 +118,10 @@ Thay thế cụm máy in kim tích hợp (đã cũ, mờ mực) trên máy đo t
 
 ## 5. Mã nguồn hiện tại (đã tách thành file riêng trong thư mục dự án)
 
-* **Web App cấu hình:** [index.html](file:///d:/DD%2060%20A/index.html)
+* **Web App cấu hình:** [index.html](file:///d:/DD%2060%20A/index.html) *(kèm thư viện offline [qrcode.js](file:///d:/DD%2060%20A/qrcode.js))*
   * Nhập `SAMPLE` (tên mẫu), `NAME` (người đo) — tự động loại bỏ dấu tiếng Việt (`removeAccents()`) trước khi gửi lên Firebase.
-  * Chọn `Loại` (`Dieu` / `Dau loc`) -> `Phân loại` (chứa chu vi mặc định), mặc định `-- Để trống (Không tính %) --` nếu chưa chọn, kèm mục **Quản lý phân loại & chu vi** lưu trên Firebase (`/dd60a_presets.json`).
+  * Chọn `Loại` (`Dieu` / `Dau loc`) -> `Phân loại` (chứa chu vi mặc định), mặc định `-- Để trống (Không tính %) --` nếu chưa chọn, kèm mục **Quản lý phân loại & Mã QR** lưu trên Firebase (`/dd60a_presets.json`).
+  * **Sinh mã QR tự động & Quét đẩy nhanh (không sửa code ESP32):** Mỗi phân loại được tạo mới/sẵn có đều tự sinh mã QR kèm nhãn (`DD60A — QUÉT ĐẨY TỰ ĐỘNG ESP32`, tên phân loại, chu vi mm), hỗ trợ tải PNG, in tem lẻ hoặc in tất cả QR ra A4. Khi người đo quét mã QR (`?auto=1&type=...&subType=...&circ=...`), Web tự động gộp với `sample`/`name`/`dec` hiện hành rồi đẩy lên `/dd60a.json` để ESP32 nhận trong ~3 giây, đồng thời giữ nguyên toàn bộ giao diện chỉnh tay bên dưới.
   * Cho phép chỉnh tay `Chu vi (mm)` cho từng lần đo (khi chỉnh tay khác phân loại, phiếu in ghi rõ là `Nhap tay`).
 * **Firmware ESP32:** [dd60a_bridge.ino](file:///d:/DD%2060%20A/dd60a_bridge/dd60a_bridge.ino) *(Thư viện cần cài: `ArduinoJson` v7+)*.
   * Giao tiếp với Citizen CT-S310II mặc định `2400, SERIAL_7N1, X-ON/X-OFF` (có thể đổi đủ 8 mức Baud `1200`–`115200`, `7 bit / 8 bit`, `Parity`, `Handshaking` trên `http://192.168.4.1`), in 100% ASCII dùng Font B thu hẹp giãn dòng và in 2 cột để tiết kiệm giấy khổ 58mm.

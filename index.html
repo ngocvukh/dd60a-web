@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cấu Hình In DD60A</title>
+  <script src="./qrcode.js"></script>
   <style>
     body { font-family: Arial, sans-serif; max-width: 460px; margin: 16px auto; padding: 0 12px; background: #f4f6f8; color: #222; }
     .card { background: #fff; padding: 18px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 14px; }
@@ -22,14 +23,49 @@
     .btn-secondary { background: #eef2f6; color: #333; margin-top: 10px; }
     .btn-small { padding: 6px 10px; font-size: 13px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
     .btn-danger { background: #fce8e6; color: #c5221f; }
+    .btn-qr { background: #e8f0fe; color: #1a73e8; }
     .btn-add { background: #e6f4ea; color: #137333; margin-top: 8px; width: 100%; padding: 10px; }
     #status, #presetStatus { text-align: center; margin-top: 10px; font-weight: bold; font-size: 14px; }
     .preset-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
     .preset-item:last-child { border-bottom: none; }
-    .hidden { display: none; }
+    .preset-header-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .preset-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+    #qrAutoBanner { border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+    .banner-loading { background: #e8f0fe; border: 2px solid #1a73e8; color: #174ea6; }
+    .banner-ok { background: #e6f4ea; border: 2px solid #137333; color: #0d652d; }
+    .banner-err { background: #fce8e6; border: 2px solid #c5221f; color: #a50e0e; }
+    .banner-title { font-size: 17px; font-weight: bold; margin-bottom: 8px; }
+    .banner-meta { background: #fff; border-radius: 8px; padding: 10px 12px; font-size: 14px; color: #222; line-height: 1.55; border: 1px solid rgba(0,0,0,0.08); }
+    .banner-note { font-size: 12px; margin-top: 8px; opacity: 0.9; }
+    .banner-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .banner-actions .btn { flex: 1; margin-top: 0; padding: 10px; font-size: 14px; min-width: 120px; }
+
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 12px; }
+    .modal-card { background: #fff; width: 100%; max-width: 420px; max-height: 92vh; overflow-y: auto; border-radius: 12px; padding: 16px; box-sizing: border-box; box-shadow: 0 8px 24px rgba(0,0,0,0.22); }
+    #qrCanvas { display: block; margin: 10px auto; max-width: 280px; width: 100%; height: auto; border: 1px solid #ddd; border-radius: 8px; }
+    .qr-options { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; font-size: 13px; }
+    .qr-opt-label { display: inline-flex; align-items: center; margin-top: 0; font-weight: normal; cursor: pointer; }
+    .qr-opt-label input { width: auto; margin: 0 5px 0 0; }
+    .qr-url-box { font-family: monospace; font-size: 11px; word-break: break-all; background: #f8f9fa; padding: 8px; border-radius: 6px; border: 1px solid #e0e0e0; color: #555; }
+    .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .modal-actions .btn { margin-top: 0; padding: 10px; font-size: 14px; }
+
+    #qrPrintSheet { display: none; }
+    .hidden, .modal-backdrop.hidden { display: none; }
+
+    @media print {
+      body { margin: 0; padding: 8mm; max-width: none; background: #fff; }
+      body > *:not(#qrPrintSheet) { display: none !important; }
+      #qrPrintSheet { display: grid !important; grid-template-columns: repeat(2, 1fr); gap: 10mm; }
+      .print-qr-card { break-inside: avoid; page-break-inside: avoid; border: 1px dashed #999; padding: 4mm; text-align: center; }
+      .print-qr-card img { width: 100%; max-width: 78mm; height: auto; display: block; margin: 0 auto; }
+    }
   </style>
 </head>
 <body>
+  <div id="qrAutoBanner" class="card hidden"></div>
+
   <div class="card">
     <h2>CẤU HÌNH PHIẾU IN DD60A</h2>
 
@@ -64,14 +100,17 @@
 
     <button class="btn btn-save" onclick="saveConfig(false)">LƯU CẤU HÌNH</button>
     <button class="btn btn-test" onclick="saveConfig(true)">LƯU &amp; IN THỬ</button>
-    <button class="btn btn-secondary" onclick="togglePresetManager()">QUẢN LÝ PHÂN LOẠI &amp; CHU VI</button>
+    <button class="btn btn-secondary" onclick="togglePresetManager()">QUẢN LÝ PHÂN LOẠI &amp; MÃ QR</button>
     <div id="status"></div>
   </div>
 
   <div id="presetManager" class="card hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
       <h3 style="margin:0;">Danh sách Phân loại &amp; Chu vi</h3>
-      <button type="button" class="btn-small btn-danger" onclick="clearAllPresets()">Xóa tất cả</button>
+      <div class="preset-header-actions">
+        <button type="button" class="btn-small btn-qr" onclick="printAllPresetQrs()">In tất cả QR</button>
+        <button type="button" class="btn-small btn-danger" onclick="clearAllPresets()">Xóa tất cả</button>
+      </div>
     </div>
     <div id="presetList"></div>
 
@@ -95,11 +134,34 @@
     <div id="presetStatus"></div>
   </div>
 
+  <div id="qrModal" class="modal-backdrop hidden" onclick="onModalBackdropClick(event)">
+    <div class="modal-card">
+      <h3 id="qrModalTitle" style="margin:0 0 6px;text-align:center;color:#1a73e8;">MÃ QR PHÂN LOẠI</h3>
+      <div id="qrModalNotice" style="text-align:center;font-size:13px;color:#137333;font-weight:bold;margin-bottom:6px;"></div>
+      <canvas id="qrCanvas" width="600" height="740"></canvas>
+      <div class="qr-options">
+        <label class="qr-opt-label"><input type="checkbox" id="qrIncludeSample" onchange="refreshActiveQrModal()"> Kèm Tên mẫu đang nhập</label>
+        <label class="qr-opt-label"><input type="checkbox" id="qrIncludeName" onchange="refreshActiveQrModal()"> Kèm Người đo đang nhập</label>
+        <label class="qr-opt-label"><input type="checkbox" id="qrIncludeDec" onchange="refreshActiveQrModal()"> Kèm số thập phân</label>
+      </div>
+      <div id="qrUrlBox" class="qr-url-box"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-save" onclick="downloadActiveQr()">Tải ảnh PNG</button>
+        <button type="button" class="btn btn-test" onclick="printActiveQr()">In tem QR này</button>
+        <button type="button" class="btn btn-secondary" onclick="copyActiveQrUrl()">Sao chép link</button>
+        <button type="button" class="btn btn-danger" onclick="closeQrModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="qrPrintSheet"></div>
+
   <script>
     // THAY LINK FIREBASE CUA BAN VAO DAY (khong co /dd60a.json o cuoi)
-    const FIREBASE_BASE = "https://dd60a-244ce-default-rtdb.asia-southeast1.firebasedatabase.app";
-    const CONFIG_URL  = FIREBASE_BASE + "/dd60a.json";
-    const PRESETS_URL = FIREBASE_BASE + "/dd60a_presets.json";
+    const FIREBASE_BASE  = "https://dd60a-244ce-default-rtdb.asia-southeast1.firebasedatabase.app";
+    const CONFIG_URL     = FIREBASE_BASE + "/dd60a.json";
+    const PRESETS_URL    = FIREBASE_BASE + "/dd60a_presets.json";
+    const PUBLIC_WEB_URL = "https://ngocvukh.github.io/dd60a-web/";
 
     const DEFAULT_PRESETS = [
       { type: "Dieu",    name: "King Size",    circ: 24.50 },
@@ -110,6 +172,8 @@
     ];
 
     let presets = [...DEFAULT_PRESETS];
+    let activeQrPreset = null;
+    let lastQrParamsString = "";
 
     function removeAccents(str) {
       return (str || "")
@@ -118,6 +182,152 @@
         .replace(/đ/g, "d")
         .replace(/Đ/g, "D")
         .trim();
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function typeLabelVi(type) {
+      const t = removeAccents(type);
+      if (t === "Dieu") return "Điếu";
+      if (t === "Dau loc") return "Đầu lọc";
+      return type || "";
+    }
+
+    function getQrBaseUrl() {
+      if (
+        window.location.protocol === "https:" &&
+        window.location.hostname !== "localhost" &&
+        window.location.hostname !== "127.0.0.1"
+      ) {
+        let path = window.location.pathname.replace(/index\.html$/i, "");
+        if (!path.endsWith("/")) path += "/";
+        return window.location.origin + path;
+      }
+      return PUBLIC_WEB_URL;
+    }
+
+    function buildQrUrl(preset, opts = {}) {
+      const params = new URLSearchParams();
+      params.set("auto", "1");
+      params.set("type", removeAccents(preset.type));
+      params.set("subType", removeAccents(preset.name));
+      params.set("circ", Number(preset.circ).toFixed(2));
+      if (opts.sample) params.set("sample", removeAccents(opts.sample));
+      if (opts.name)   params.set("name", removeAccents(opts.name));
+      if (opts.dec !== undefined && opts.dec !== null && opts.dec !== "") {
+        params.set("dec", String(opts.dec));
+      }
+      return getQrBaseUrl() + "?" + params.toString();
+    }
+
+    function drawLabeledQrCanvas(canvas, preset, opts = {}) {
+      if (typeof qrcode !== "function") {
+        throw new Error("Thư viện qrcode.js chưa sẵn sàng.");
+      }
+      const url = buildQrUrl(preset, opts);
+      const qr = qrcode(0, "M");
+      qr.addData(url);
+      qr.make();
+
+      const width = 600;
+      const height = 740;
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingEnabled = false;
+
+      // Nen trang & vien nhe
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+      ctx.strokeStyle = "#d0d7de";
+      ctx.lineWidth = 4;
+      ctx.strokeRect(8, 8, width - 16, height - 16);
+
+      // Tieu de tren cung
+      ctx.fillStyle = "#1a73e8";
+      ctx.font = "bold 22px Arial, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("DD60A — QUÉT ĐẨY TỰ ĐỘNG ESP32", width / 2, 48);
+
+      // Ma QR o giua khung 420x420 voi quiet zone 4 module
+      const count = qr.getModuleCount();
+      const quiet = 4;
+      const total = count + quiet * 2;
+      const boxSize = 420;
+      const cell = Math.max(2, Math.floor(boxSize / total));
+      const drawSize = cell * total;
+      const offsetX = Math.floor((width - drawSize) / 2);
+      const offsetY = 76 + Math.floor((boxSize - drawSize) / 2);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(offsetX, offsetY, drawSize, drawSize);
+      ctx.fillStyle = "#000000";
+      for (let r = 0; r < count; r++) {
+        for (let c = 0; c < count; c++) {
+          if (qr.isDark(r, c)) {
+            ctx.fillRect(
+              offsetX + (c + quiet) * cell,
+              offsetY + (r + quiet) * cell,
+              cell,
+              cell
+            );
+          }
+        }
+      }
+
+      // Nhan phan loai
+      const titleText = `[${typeLabelVi(preset.type)}] ${preset.name}`;
+      let fontSize = 30;
+      ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+      while (ctx.measureText(titleText).width > 540 && fontSize > 18) {
+        fontSize -= 2;
+        ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+      }
+      ctx.fillStyle = "#111111";
+      ctx.fillText(titleText, width / 2, 550);
+
+      // Nhan chu vi noi bat
+      const circText = `${Number(preset.circ).toFixed(2)} mm`;
+      ctx.fillStyle = "#1a73e8";
+      ctx.font = "bold 44px Arial, sans-serif";
+      ctx.fillText(circText, width / 2, 612);
+
+      // Thong tin tuy chon neu co (Mau / Nguoi do / Thap phan)
+      const extras = [];
+      if (opts.sample) extras.push(`Mẫu: ${opts.sample}`);
+      if (opts.name)   extras.push(`Đo: ${opts.name}`);
+      if (opts.dec !== undefined && opts.dec !== null && opts.dec !== "") {
+        extras.push(`Thập phân: ${opts.dec}`);
+      }
+      if (extras.length > 0) {
+        let extraText = extras.join(" | ");
+        let exFont = 18;
+        ctx.font = `${exFont}px Arial, sans-serif`;
+        while (ctx.measureText(extraText).width > 540 && exFont > 13) {
+          exFont -= 1;
+          ctx.font = `${exFont}px Arial, sans-serif`;
+        }
+        ctx.fillStyle = "#444444";
+        ctx.fillText(extraText, width / 2, 658);
+      }
+
+      // Huong dan o chan tem
+      ctx.fillStyle = "#666666";
+      ctx.font = "18px Arial, sans-serif";
+      ctx.fillText("Quét bằng Camera / Zalo để nạp nhanh lên ESP32", width / 2, 705);
+
+      const rawName = `QR_${removeAccents(preset.type)}_${removeAccents(preset.name)}_${Number(preset.circ).toFixed(2)}mm.png`;
+      const filename = rawName.replace(/[^a-zA-Z0-9._-]+/g, "_");
+      return { url, filename };
     }
 
     function renderSubTypes(selectedSubType = null) {
@@ -218,8 +428,11 @@
         const div = document.createElement("div");
         div.className = "preset-item";
         div.innerHTML = `
-          <span><strong>[${p.type}]</strong> ${p.name} - <b>${Number(p.circ).toFixed(2)} mm</b></span>
-          <button type="button" class="btn-small btn-danger" onclick="deletePreset(${idx})">Xóa</button>
+          <span><strong>[${escapeHtml(typeLabelVi(p.type))}]</strong> ${escapeHtml(p.name)} - <b>${Number(p.circ).toFixed(2)} mm</b></span>
+          <div class="preset-actions">
+            <button type="button" class="btn-small btn-qr" onclick="openPresetQr(${idx}, false)">Mã QR</button>
+            <button type="button" class="btn-small btn-danger" onclick="deletePreset(${idx})">Xóa</button>
+          </div>
         `;
         list.appendChild(div);
       });
@@ -240,9 +453,11 @@
         ps.innerText = "Đã cập nhật danh sách phân loại!";
         renderPresetList();
         renderSubTypes(document.getElementById("subTypeSelect").value);
+        return true;
       } catch (e) {
         ps.style.color = "red";
         ps.innerText = "Lỗi lưu danh sách!";
+        return false;
       }
     }
 
@@ -262,7 +477,11 @@
       }
       document.getElementById("newPresetName").value = "";
       document.getElementById("newPresetCirc").value = "";
-      await syncPresetsToFirebase();
+      const ok = await syncPresetsToFirebase();
+      if (ok) {
+        const idx = presets.findIndex(p => p.type === type && p.name.toLowerCase() === name.toLowerCase());
+        if (idx >= 0) openPresetQr(idx, true);
+      }
     }
 
     async function deletePreset(idx) {
@@ -275,10 +494,311 @@
       await syncPresetsToFirebase();
     }
 
-    window.onload = async () => {
+    function getActiveQrOpts() {
+      const opts = {};
+      if (document.getElementById("qrIncludeSample").checked) {
+        const s = removeAccents(document.getElementById("sample").value);
+        if (s) opts.sample = s;
+      }
+      if (document.getElementById("qrIncludeName").checked) {
+        const n = removeAccents(document.getElementById("name").value);
+        if (n) opts.name = n;
+      }
+      if (document.getElementById("qrIncludeDec").checked) {
+        const parsedDec = parseInt(document.getElementById("dec").value, 10);
+        opts.dec = Math.min(4, Math.max(0, isNaN(parsedDec) ? 2 : parsedDec));
+      }
+      return opts;
+    }
+
+    function openPresetQr(idx, justCreated = false) {
+      const p = presets[idx];
+      if (!p) return;
+      activeQrPreset = { ...p };
+      document.getElementById("qrIncludeSample").checked = false;
+      document.getElementById("qrIncludeName").checked = false;
+      document.getElementById("qrIncludeDec").checked = false;
+      document.getElementById("qrModalTitle").innerText = `MÃ QR: [${typeLabelVi(p.type)}] ${p.name}`;
+      document.getElementById("qrModalNotice").innerText = justCreated
+        ? "Đã lưu phân loại & tạo mã QR tự động!"
+        : "";
+      refreshActiveQrModal();
+      document.getElementById("qrModal").classList.remove("hidden");
+    }
+
+    function refreshActiveQrModal() {
+      if (!activeQrPreset) return;
+      const canvas = document.getElementById("qrCanvas");
+      const opts = getActiveQrOpts();
+      const { url } = drawLabeledQrCanvas(canvas, activeQrPreset, opts);
+      document.getElementById("qrUrlBox").innerText = url;
+    }
+
+    function closeQrModal() {
+      document.getElementById("qrModal").classList.add("hidden");
+    }
+
+    function onModalBackdropClick(event) {
+      if (event.target === event.currentTarget) {
+        closeQrModal();
+      }
+    }
+
+    function downloadActiveQr() {
+      if (!activeQrPreset) return;
+      const canvas = document.getElementById("qrCanvas");
+      const { filename } = drawLabeledQrCanvas(canvas, activeQrPreset, getActiveQrOpts());
+      const a = document.createElement("a");
+      a.download = filename;
+      a.href = canvas.toDataURL("image/png");
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    async function copyActiveQrUrl() {
+      const url = document.getElementById("qrUrlBox").innerText;
+      if (!url) return;
+      const notice = document.getElementById("qrModalNotice");
       try {
-        const pRes = await fetch(PRESETS_URL);
-        const pData = await pRes.json();
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(url);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = url;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+        notice.style.color = "#137333";
+        notice.innerText = "Đã sao chép đường link mã QR!";
+      } catch (e) {
+        notice.style.color = "#c5221f";
+        notice.innerText = "Không tự sao chép được, hãy copy từ khung phía trên.";
+      }
+    }
+
+    async function printQrItems(items, opts = {}) {
+      if (!items || items.length === 0) {
+        alert("Chưa có phân loại nào để in mã QR!");
+        return;
+      }
+      const sheet = document.getElementById("qrPrintSheet");
+      sheet.innerHTML = "";
+      const offCanvas = document.createElement("canvas");
+      const loadPromises = items.map(item => {
+        drawLabeledQrCanvas(offCanvas, item, opts);
+        const dataUrl = offCanvas.toDataURL("image/png");
+        const card = document.createElement("div");
+        card.className = "print-qr-card";
+        const img = document.createElement("img");
+        img.alt = `${item.type} - ${item.name}`;
+        const p = new Promise(resolve => {
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+        });
+        img.src = dataUrl;
+        card.appendChild(img);
+        sheet.appendChild(card);
+        return p;
+      });
+      await Promise.all(loadPromises);
+      setTimeout(() => window.print(), 60);
+    }
+
+    function printActiveQr() {
+      if (!activeQrPreset) return;
+      printQrItems([activeQrPreset], getActiveQrOpts());
+    }
+
+    function printAllPresetQrs() {
+      printQrItems(presets, {});
+    }
+
+    function applyConfigToForm(data) {
+      if (!data) {
+        renderSubTypes("__NULL__");
+        onSubTypeChange();
+        return;
+      }
+      document.getElementById("sample").value = data.sample || "";
+      document.getElementById("name").value   = data.name || "";
+      if (data.type) {
+        const cleanType = removeAccents(data.type);
+        const typeEl = document.getElementById("typeSelect");
+        if ([...typeEl.options].some(o => o.value === cleanType)) {
+          typeEl.value = cleanType;
+        }
+      }
+      const hasValidCirc = (data.circ && Number(data.circ) > 0);
+      const currentType = document.getElementById("typeSelect").value;
+      const subName = data.subType ? removeAccents(data.subType) : "";
+      const subExists = presets.some(p => p.type === currentType && p.name === subName);
+      let selectedSub = "__NULL__";
+      if (hasValidCirc) {
+        selectedSub = (!data.isManualCirc && subExists) ? subName : "__MANUAL__";
+      }
+      renderSubTypes(selectedSub);
+      document.getElementById("circ").value = hasValidCirc ? Number(data.circ).toFixed(2) : "";
+      document.getElementById("dec").value  = data.dec ?? 2;
+      updateManualBadge();
+    }
+
+    function hideQrBanner() {
+      document.getElementById("qrAutoBanner").classList.add("hidden");
+    }
+
+    function showQrBanner(variant, html) {
+      const banner = document.getElementById("qrAutoBanner");
+      banner.className = "card " + variant;
+      banner.innerHTML = html;
+    }
+
+    async function retryQrAutoPush() {
+      if (!lastQrParamsString) return;
+      let currentData = null;
+      try {
+        const res = await fetch(CONFIG_URL);
+        if (res.ok) currentData = await res.json();
+      } catch (e) { console.error(e); }
+      await handleQrAutoPush(new URLSearchParams(lastQrParamsString), currentData);
+    }
+
+    async function handleQrAutoPush(params, currentData) {
+      showQrBanner("banner-loading", `<div class="banner-title">⏳ Đang tự động đẩy cấu hình từ mã QR lên ESP32...</div>`);
+
+      const supportedKeys = ["type", "subType", "circ", "sample", "name", "dec", "test"];
+      if (!supportedKeys.some(k => params.has(k))) {
+        showQrBanner("banner-err", `
+          <div class="banner-title">⚠️ Mã QR không chứa tham số cấu hình hợp lệ</div>
+          <div class="banner-actions">
+            <button type="button" class="btn btn-secondary" onclick="hideQrBanner()">Đóng</button>
+          </div>
+        `);
+        return null;
+      }
+
+      const base = currentData || {};
+      const sampleVal = params.has("sample")
+        ? (removeAccents(params.get("sample")) || null)
+        : (base.sample || null);
+      const nameVal = params.has("name")
+        ? (removeAccents(params.get("name")) || null)
+        : (base.name || null);
+
+      let decVal = (typeof base.dec === "number") ? Math.min(4, Math.max(0, base.dec)) : 2;
+      if (params.has("dec")) {
+        const parsedDec = parseInt(params.get("dec"), 10);
+        decVal = Math.min(4, Math.max(0, isNaN(parsedDec) ? 2 : parsedDec));
+      }
+
+      let typeVal       = base.type || null;
+      let subTypeVal    = base.subType || null;
+      let circVal       = (base.circ && Number(base.circ) > 0) ? Number(Number(base.circ).toFixed(2)) : null;
+      let isManualVal   = (circVal !== null) ? Boolean(base.isManualCirc) : null;
+
+      if (params.has("circ") || params.has("type") || params.has("subType")) {
+        const circRaw = params.get("circ");
+        const circParsed = circRaw !== null ? parseFloat(circRaw) : NaN;
+        if (circRaw === "null" || circRaw === "" || (circRaw !== null && !isNaN(circParsed) && circParsed <= 0)) {
+          typeVal = null;
+          subTypeVal = null;
+          circVal = null;
+          isManualVal = null;
+        } else if (circRaw !== null && !isNaN(circParsed) && circParsed > 0) {
+          circVal = Number(circParsed.toFixed(2));
+          typeVal = removeAccents(params.get("type") || base.type || "Dieu");
+          const subRaw = params.has("subType") ? removeAccents(params.get("subType")) : "";
+          subTypeVal = subRaw || "Nhap tay";
+          isManualVal = (subTypeVal === "Nhap tay");
+        } else {
+          const reqType = removeAccents(params.get("type") || base.type || "");
+          const reqSub  = removeAccents(params.get("subType") || "");
+          const found = presets.find(p =>
+            (!reqType || p.type === reqType) &&
+            p.name.toLowerCase() === reqSub.toLowerCase()
+          );
+          if (found) {
+            typeVal = removeAccents(found.type);
+            subTypeVal = removeAccents(found.name);
+            circVal = Number(Number(found.circ).toFixed(2));
+            isManualVal = false;
+          }
+        }
+      }
+
+      const isTest = params.get("test") === "1";
+      const payload = {
+        sample:       sampleVal,
+        name:         nameVal,
+        type:         typeVal,
+        subType:      subTypeVal,
+        circ:         circVal,
+        isManualCirc: isManualVal,
+        dec:          decVal,
+        testPrint:    isTest
+      };
+
+      try {
+        const res = await fetch(CONFIG_URL, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+
+        applyConfigToForm(payload);
+
+        const typeText = payload.circ
+          ? `${escapeHtml(typeLabelVi(payload.type))} - ${escapeHtml(payload.subType)} (<b>${Number(payload.circ).toFixed(2)} mm</b>)`
+          : "Chưa có chu vi (chỉ in mm)";
+
+        showQrBanner("banner-ok", `
+          <div class="banner-title">✅ ĐÃ TỰ ĐỘNG ĐẨY CẤU HÌNH LÊN ESP32</div>
+          <div class="banner-meta">
+            <div><b>Loại / Phân loại:</b> ${typeText}</div>
+            <div><b>Tên mẫu (SAMPLE):</b> ${escapeHtml(payload.sample || "(Để trống)")}</div>
+            <div><b>Người đo (NAME):</b> ${escapeHtml(payload.name || "(Để trống)")}</div>
+            <div><b>Số thập phân:</b> ${escapeHtml(payload.dec)}${isTest ? " | <b>Đã gửi lệnh in thử!</b>" : ""}</div>
+          </div>
+          <div class="banner-note">ESP32 tự nhận trong ~3 giây (kiểm tra màn hình OLED). Bạn vẫn có thể sửa thêm ở form bên dưới.</div>
+          <div class="banner-actions">
+            <button type="button" class="btn btn-test" onclick="saveConfig(true)">In thử ngay</button>
+            <button type="button" class="btn btn-secondary" onclick="hideQrBanner()">Đóng</button>
+          </div>
+        `);
+
+        try {
+          window.history.replaceState({}, "", window.location.pathname);
+        } catch (err) { console.warn(err); }
+
+        return payload;
+      } catch (e) {
+        console.error(e);
+        lastQrParamsString = params.toString();
+        showQrBanner("banner-err", `
+          <div class="banner-title">❌ Lỗi tự động đẩy cấu hình từ mã QR</div>
+          <div class="banner-note">Vui lòng kiểm tra kết nối mạng (4G/Wi-Fi) rồi thử lại hoặc bấm lưu ở form bên dưới.</div>
+          <div class="banner-actions">
+            <button type="button" class="btn btn-save" onclick="retryQrAutoPush()">Thử đẩy lại</button>
+            <button type="button" class="btn btn-secondary" onclick="hideQrBanner()">Đóng</button>
+          </div>
+        `);
+        return null;
+      }
+    }
+
+    window.onload = async () => {
+      const [presetsRes, configRes] = await Promise.allSettled([
+        fetch(PRESETS_URL).then(r => (r.ok ? r.json() : null)),
+        fetch(CONFIG_URL).then(r => (r.ok ? r.json() : null))
+      ]);
+
+      if (presetsRes.status === "fulfilled" && presetsRes.value) {
+        const pData = presetsRes.value;
         if (Array.isArray(pData)) {
           presets = pData.map(p => ({
             type: removeAccents(p.type),
@@ -293,26 +813,19 @@
             circ: Number(p.circ)
           }));
         }
-      } catch (e) { console.error(e); }
+      }
 
-      try {
-        const res = await fetch(CONFIG_URL);
-        const data = await res.json();
-        if (data) {
-          document.getElementById("sample").value = data.sample || "";
-          document.getElementById("name").value   = data.name || "";
-          if (data.type) document.getElementById("typeSelect").value = removeAccents(data.type);
-          const hasValidCirc = (data.circ && Number(data.circ) > 0);
-          renderSubTypes(hasValidCirc ? (data.isManualCirc ? "__MANUAL__" : removeAccents(data.subType)) : "__NULL__");
-          document.getElementById("circ").value = hasValidCirc ? Number(data.circ).toFixed(2) : "";
-          document.getElementById("dec").value = data.dec ?? 2;
-          updateManualBadge();
-          return;
+      const currentData = (configRes.status === "fulfilled") ? configRes.value : null;
+      const params = new URLSearchParams(window.location.search);
+
+      if (params.get("auto") === "1") {
+        const pushed = await handleQrAutoPush(params, currentData);
+        if (!pushed) {
+          applyConfigToForm(currentData);
         }
-      } catch (e) { console.error(e); }
-
-      renderSubTypes("__NULL__");
-      onSubTypeChange();
+      } else {
+        applyConfigToForm(currentData);
+      }
     };
 
     async function saveConfig(isTest) {

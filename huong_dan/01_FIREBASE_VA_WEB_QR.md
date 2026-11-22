@@ -52,9 +52,13 @@
 7. Chờ khoảng 1–2 phút rồi tải lại trang **Settings -> Pages**, bạn sẽ thấy đường link HTTPS cố định ở đầu trang (dạng `https://ten-tai-khoan.github.io/dd60a-web/`).
    *(Sau này nếu muốn sửa giao diện Web, chỉ cần upload đè file `index.html` mới lên repo là link tự cập nhật, không đổi mã QR).*
 
-### 2.3. Tạo mã QR cố định
-1. Dùng bất kỳ trang tạo QR nào (hoặc chức năng tạo QR trên trình duyệt Chrome/Edge) dán link Web vừa có vào để tạo **1 mã QR duy nhất**.
-2. In mã QR này ra và dán cố định lên thân máy Borgwaldt DD60A hoặc bàn thao tác.
+### 2.3. Sử dụng Mã QR cố định & Mã QR tự động theo Phân loại
+1. **Mã QR mở Web chung ([QR_DD60A.png](file:///d:/DD%2060%20A/QR_DD60A.png)):** Dùng để quét mở giao diện Web cấu hình (`https://ngocvukh.github.io/dd60a-web/`) khi cần nhập tay tên mẫu, người đo hoặc chỉnh mọi thông số.
+2. **Mã QR đẩy nhanh từng Phân loại (Sinh tự động ngay trên Web):**
+   - Trong Web cấu hình, bấm **`QUẢN LÝ PHÂN LOẠI & MÃ QR`**.
+   - Ngay khi bấm **`+ THÊM / CẬP NHẬT PHÂN LOẠI`**, Web sẽ tự động tạo sẵn **1 mã QR riêng** cho phân loại đó (kèm tên Loại, Phân loại và Chu vi mm), hoặc bấm nút **`Mã QR`** ở từng dòng để xem lại / **`In tất cả QR`** để in hàng loạt ra khổ A4 dán tại bàn đo.
+   - Khi người đo dùng **Camera điện thoại / Zalo** quét mã QR của một phân loại: trình duyệt mở link `?auto=1&type=...&subType=...&circ=...`, Web tự động đẩy **Loại + Phân loại + Chu vi** lên Firebase (giữ nguyên **Tên mẫu**, **Người đo** và **Số thập phân** đang dùng), hiện thông báo xác nhận màu xanh và ESP32 tự cập nhật sau ~3 giây — **không cần sửa lại bất kỳ dòng code ESP32 nào**.
+   - *(Mẹo: Nếu muốn tem QR cố định cả Tên mẫu hoặc Người đo, tick thêm ô `Kèm Tên mẫu đang nhập` / `Kèm Người đo đang nhập` trước khi tải ảnh PNG hoặc in tem).*
 
 ---
 

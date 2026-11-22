@@ -12,7 +12,7 @@
 | Hạng mục | Trạng thái | Chi tiết |
 | :--- | :---: | :--- |
 | **Firebase Realtime Database** | Hoàn tất | Đã tạo database, cấu hình Rules đọc/ghi lâu dài cho `/dd60a` và `/dd60a_presets` (không giới hạn 30 ngày). |
-| **Web cấu hình qua QR** | Hoàn tất | Deploy [index.html](file:///d:/DD%2060%20A/index.html) lên GitHub Pages (`https://ngocvukh.github.io/dd60a-web/`). |
+| **Web cấu hình qua QR** | Hoàn tất | Deploy [index.html](file:///d:/DD%2060%20A/index.html) + [qrcode.js](file:///d:/DD%2060%20A/qrcode.js) lên GitHub Pages (`https://ngocvukh.github.io/dd60a-web/`), hỗ trợ cả nhập tay và sinh mã QR tự động cho từng phân loại để quét đẩy nhanh lên ESP32. |
 | **Ảnh nhãn QR để in** | Hoàn tất | Tạo sẵn file [QR_DD60A.png](file:///d:/DD%2060%20A/QR_DD60A.png) (`680 x 830 px`) gồm mã QR Web + thông tin Wi-Fi `DD60A-Setup` (`12345678`, `http://192.168.4.1`). |
 | **Firmware ESP32** | Hoàn tất & Đã nạp | Đã biên dịch (`1220608 bytes`) và nạp [dd60a_bridge.ino](file:///d:/DD%2060%20A/dd60a_bridge/dd60a_bridge.ino) lên ESP32 qua `COM9`, hỗ trợ OLED 0.91" (`0x3C`) và LED báo Wi-Fi (`GPIO 25`/`26`). |
 | **Phần cứng & Sơ đồ đấu dây** | Đã test thông mạch | Đã cập nhật sơ đồ đảo chân thực tế cho cả **MAX3232 #1** (`RXD -> GPIO 16`, `TXD -> GPIO 17`) và **MAX3232 #2** (`RXD -> GPIO 18`, `TXD -> GPIO 19`). |
@@ -35,8 +35,9 @@
    - Đổi Wi-Fi (kèm quét Wi-Fi xung quanh không xung đột Core 0) và chỉnh cấu hình máy in Citizen (đủ 8 mức Baud `1200`–`115200`, `7/8 bit`, `Parity None/Even/Odd`, `X-ON/X-OFF / None`) trực tiếp trên Web nội bộ mà không cần nạp lại code.
    - Mặc định cổng máy in đặt sẵn `2400 bps, 7-N-1, X-ON/X-OFF` khớp với tờ Self-Test của Citizen CT-S310II.
    - Toàn bộ cấu hình Wi-Fi, cổng máy in và thông số bản in lưu trong Flash NVS (`Preferences`), **không bị mất khi mất điện** và vẫn in Offline bình thường khi rớt Wi-Fi.
-4. **Web cấu hình (`index.html`):**
+4. **Web cấu hình (`index.html` + `qrcode.js`) — Giữ nguyên 100% firmware ESP32:**
    - Tự động bỏ dấu tiếng Việt (`removeAccents()`), cho phép để trống phân loại/chu vi, nhập tay chu vi, và quản lý danh sách phân loại (thêm/sửa/xóa vĩnh viễn với `{ initialized: true, items: [...] }` + nút `Xóa tất cả`).
+   - **Sinh mã QR tự động & Quét đẩy nhanh:** Mỗi khi thêm/cập nhật phân loại (hoặc bấm `Mã QR` trên từng dòng), Web tự tạo tem QR gắn nhãn (`Loại`, `Phân loại`, `Chu vi mm`), cho phép tải ảnh PNG, in tem lẻ hoặc in tất cả QR khổ A4. Khi người đo quét bằng Camera/Zalo (`?auto=1&type=...&subType=...&circ=...`), Web tự động gộp với `sample`/`name`/`dec` hiện có và đẩy thẳng lên `/dd60a.json` cho ESP32 tự cập nhật trong ~3 giây, vẫn giữ nguyên form chỉnh tay bên dưới.
 
 ---
 
