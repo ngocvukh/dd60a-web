@@ -125,7 +125,7 @@ Thay thế cụm máy in kim tích hợp (đã cũ, mờ mực) trên máy đo t
   * Cho phép chỉnh tay `Chu vi (mm)` cho từng lần đo (khi chỉnh tay khác phân loại, phiếu in ghi rõ là `Nhap tay`).
 * **Firmware ESP32:** [dd60a_bridge.ino](file:///d:/DD%2060%20A/dd60a_bridge/dd60a_bridge.ino) *(Thư viện cần cài: `ArduinoJson` v7+)*.
   * Giao tiếp với Citizen CT-S310II mặc định `2400, SERIAL_7N1, X-ON/X-OFF` (có thể đổi đủ 8 mức Baud `1200`–`115200`, `7 bit / 8 bit`, `Parity`, `Handshaking` trên `http://192.168.4.1`), in 100% ASCII dùng Font B thu hẹp giãn dòng và in 2 cột để tiết kiệm giấy khổ 58mm.
-  * Gom toàn bộ mẫu đo vào bộ đệm (`MAX_SAMPLES = 150`) và chỉ xuất in toàn bộ phiếu + cắt giấy khi gặp gói `FF05` (kèm timeout dự phòng `800 ms`); tự động xét STT mẫu (`sampleNum <= lastSampleNum` hoặc `0000` mới) để đẩy in phiếu cũ kèm cảnh báo `! CANH BAO: Mau da do chua duoc in truoc !`.
+  * Gom toàn bộ mẫu đo vào bộ đệm (`MAX_SAMPLES = 150`) và chỉ xuất in toàn bộ phiếu + cắt giấy khi gặp gói `FF05` (kèm timeout dự phòng `800 ms`); tự động xét STT mẫu (`sampleNum <= lastSampleNum` hoặc `0000` mới) để đẩy in phiếu cũ kèm cảnh báo `! CANH BAO: Mau da do chua duoc in truoc !`. Sau mỗi loạt đo thật in hoàn tất (`printFullBatch(false)`), ESP32 tự động xóa `sample`, `name`, `type`, `subType`, `circ`, `isManualCirc` về `null` trên RAM/NVS/OLED và đồng bộ `PATCH` lên Firebase (chỉ giữ lại `dec`; không reset khi bấm `In thử` từ Web).
   * Nhận đồng thời cấu hình từ Firebase (`circ`, `sample`, `name`, `type`, `subType`, `isManualCirc`, `dec`, `testPrint`) và gói tin RS-232 từ DD60A.
   * Khi `circ > 0`, quy đổi `% = (giaTriDo / (chuVi / PI)) * 100`, làm tròn chuẩn toán học cả `mm` và `%` theo `dec`; khi `circ` là `null` (`<= 0`), chỉ in giá trị gốc `mm` và `V.C.%`.
 

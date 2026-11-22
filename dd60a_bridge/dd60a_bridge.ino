@@ -69,9 +69,11 @@ char   printerHandshake  = 'X';  // 'X' (X-ON/X-OFF), 'N' (None)
 bool   printerXoffPaused = false;
 unsigned long xoffStartTime = 0;
 
-volatile bool pendingTestPrint = false;
-volatile bool ntpConfigured    = false;
-volatile bool isScanningWifi   = false;
+volatile bool     pendingTestPrint       = false;
+volatile bool     pendingClearAfterPrint = false;
+volatile uint32_t clearConfigEpoch       = 0;
+volatile bool     ntpConfigured          = false;
+volatile bool     isScanningWifi         = false;
 
 String packetBuffer    = "";
 bool   receivingPacket = false;
@@ -504,6 +506,28 @@ void resetBatchBuffer() {
   lastStatPacketTime = 0;
 }
 
+void updateOledDisplay(bool force);
+
+void clearBatchConfigAfterPrint() {
+  PrintConfig cleared;
+  xSemaphoreTake(cfgMutex, portMAX_DELAY);
+  cfg.sample       = "";
+  cfg.name         = "";
+  cfg.type         = "";
+  cfg.subType      = "";
+  cfg.circ         = 0.0;
+  cfg.isManualCirc = false;
+  // Giu nguyen cfg.dec
+  cleared = cfg;
+  clearConfigEpoch++;
+  pendingClearAfterPrint = true;
+  xSemaphoreGive(cfgMutex);
+
+  saveConfigToNVS(cleared);
+  updateOledDisplay(true);
+  Serial.println("[DD60A] Da reset ten mau, nguoi do, phan loai & chu vi sau khi in.");
+}
+
 void printFullBatch(bool isUnfinishedWarning) {
   if (batchSampleCount == 0 && !hasMax && !hasMin && !hasMean && !hasStd && !hasVc) {
     resetBatchBuffer();
@@ -536,6 +560,9 @@ void printFullBatch(bool isUnfinishedWarning) {
 
   cutPaper();
   resetBatchBuffer();
+  if (!isUnfinishedWarning) {
+    clearBatchConfigAfterPrint();
+  }
 }
 
 void processPacket(String data) {
@@ -646,6 +673,38 @@ void syncFirebaseTask(void* pvParameters) {
     HTTPClient http;
     http.setTimeout(3500);
 
+    bool needClear = false;
+    uint32_t clearEpochSnap = 0;
+    xSemaphoreTake(cfgMutex, portMAX_DELAY);
+    needClear = pendingClearAfterPrint;
+    clearEpochSnap = clearConfigEpoch;
+    xSemaphoreGive(cfgMutex);
+
+    if (needClear) {
+      int patchCode = -1;
+      if (http.begin(client, FIREBASE_URL)) {
+        http.addHeader("Content-Type", "application/json");
+        patchCode = http.PATCH("{\"sample\":null,\"name\":null,\"type\":null,\"subType\":null,\"circ\":null,\"isManualCirc\":null}");
+        http.end();
+      }
+      if (patchCode >= 200 && patchCode < 300) {
+        xSemaphoreTake(cfgMutex, portMAX_DELAY);
+        if (clearConfigEpoch == clearEpochSnap) {
+          pendingClearAfterPrint = false;
+        }
+        xSemaphoreGive(cfgMutex);
+        Serial.println("[DD60A] Da dong bo reset len Firebase.");
+      } else {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        continue;
+      }
+    }
+
+    uint32_t epochBeforeGet = 0;
+    xSemaphoreTake(cfgMutex, portMAX_DELAY);
+    epochBeforeGet = clearConfigEpoch;
+    xSemaphoreGive(cfgMutex);
+
     if (http.begin(client, FIREBASE_URL)) {
       int httpCode = http.GET();
       if (httpCode == 200) {
@@ -677,14 +736,23 @@ void syncFirebaseTask(void* pvParameters) {
           int vDec = doc["dec"].isNull() ? 2 : doc["dec"].as<int>();
           if (vDec != nextCfg.dec) { nextCfg.dec = vDec; changed = true; }
 
-          if (changed) {
-            xSemaphoreTake(cfgMutex, portMAX_DELAY);
-            cfg = nextCfg;
-            xSemaphoreGive(cfgMutex);
+          bool applied = false;
+          bool allowApply = false;
+          xSemaphoreTake(cfgMutex, portMAX_DELAY);
+          if (!pendingClearAfterPrint && clearConfigEpoch == epochBeforeGet) {
+            allowApply = true;
+            if (changed) {
+              cfg = nextCfg;
+              applied = true;
+            }
+          }
+          xSemaphoreGive(cfgMutex);
+
+          if (applied) {
             saveConfigToNVS(nextCfg);
           }
 
-          if (doc["testPrint"] == true) {
+          if (allowApply && doc["testPrint"] == true) {
             pendingTestPrint = true;
             http.end();
             if (http.begin(client, FIREBASE_URL)) {
@@ -697,7 +765,10 @@ void syncFirebaseTask(void* pvParameters) {
       http.end();
     }
 
-    vTaskDelay(pdMS_TO_TICKS(3000));
+    for (int w = 0; w < 15; w++) {
+      if (pendingClearAfterPrint) break;
+      vTaskDelay(pdMS_TO_TICKS(200));
+    }
   }
 }
 

@@ -14,7 +14,7 @@
 | **Firebase Realtime Database** | Hoàn tất | Đã tạo database, cấu hình Rules đọc/ghi lâu dài cho `/dd60a` và `/dd60a_presets` (không giới hạn 30 ngày). |
 | **Web cấu hình qua QR** | Hoàn tất | Deploy [index.html](file:///d:/DD%2060%20A/index.html) + [qrcode.js](file:///d:/DD%2060%20A/qrcode.js) lên GitHub Pages (`https://ngocvukh.github.io/dd60a-web/`), hỗ trợ cả nhập tay và sinh mã QR tự động cho từng phân loại để quét đẩy nhanh lên ESP32. |
 | **Ảnh nhãn QR để in** | Hoàn tất | Tạo sẵn file [QR_DD60A.png](file:///d:/DD%2060%20A/QR_DD60A.png) (`680 x 830 px`) gồm mã QR Web + thông tin Wi-Fi `DD60A-Setup` (`12345678`, `http://192.168.4.1`). |
-| **Firmware ESP32** | Hoàn tất & Đã nạp | Đã biên dịch (`1220608 bytes`) và nạp [dd60a_bridge.ino](file:///d:/DD%2060%20A/dd60a_bridge/dd60a_bridge.ino) lên ESP32 qua `COM9`, hỗ trợ OLED 0.91" (`0x3C`) và LED báo Wi-Fi (`GPIO 25`/`26`). |
+| **Firmware ESP32** | Hoàn tất & Đã nạp | Đã biên dịch (`1220877 bytes`) và nạp [dd60a_bridge.ino](file:///d:/DD%2060%20A/dd60a_bridge/dd60a_bridge.ino) lên ESP32 qua `COM9`, hỗ trợ OLED 0.91" (`0x3C`), LED báo Wi-Fi (`GPIO 25`/`26`) và tự reset cấu hình sau mỗi loạt in thật. |
 | **Phần cứng & Sơ đồ đấu dây** | Đã test thông mạch | Đã cập nhật sơ đồ đảo chân thực tế cho cả **MAX3232 #1** (`RXD -> GPIO 16`, `TXD -> GPIO 17`) và **MAX3232 #2** (`RXD -> GPIO 18`, `TXD -> GPIO 19`). |
 | **Công cụ test PowerShell** | Hoàn tất | Tạo sẵn [test_dd60a_send.ps1](file:///d:/DD%2060%20A/test_dd60a_send.ps1) (giả lập DD60A `2400 7-N-2`) và [test_rs232_monitor.ps1](file:///d:/DD%2060%20A/test_rs232_monitor.ps1) (giám sát đầu ra RS-232). |
 | **Tài liệu hướng dẫn** | Hoàn tất | Đã tách gọn thành 4 hạng mục trong `huong_dan/` và mục lục tại [HUONG_DAN_TRIEN_KHAI.md](file:///d:/DD%2060%20A/HUONG_DAN_TRIEN_KHAI.md). |
@@ -31,6 +31,7 @@
 2. **Gom mẫu theo loạt & kiểm tra STT:**
    - Gom toàn bộ mẫu đo (`MAX_SAMPLES = 150`) và chỉ in trọn phiếu khi nhận gói kết thúc `FF05` (có timeout dự phòng `800 ms` sau `FF01`–`FF04`).
    - Nếu nhận `0000` mới hoặc `sampleNum <= lastSampleNum` khi loạt cũ chưa kết thúc, ESP32 tự in phiếu cũ kèm cảnh báo `! CANH BAO: Mau da do chua duoc in truoc !` rồi mới lưu mẫu mới.
+   - Sau mỗi lần in xong một loạt đo thật (`printFullBatch(false)`), ESP32 tự động reset `sample`, `name`, `type`, `subType`, `circ`, `isManualCirc` về `null` trên RAM, NVS, màn hình OLED (`Loai: null` / `null`) và đồng bộ `PATCH` xóa trên Firebase `/dd60a.json` (chỉ giữ lại `dec`; không reset khi bấm `In thử` từ Web).
 3. **Captive Portal `DD60A-Setup` (`192.168.4.1`) & Lưu bền vững NVS:**
    - Đổi Wi-Fi (kèm quét Wi-Fi xung quanh không xung đột Core 0) và chỉnh cấu hình máy in Citizen (đủ 8 mức Baud `1200`–`115200`, `7/8 bit`, `Parity None/Even/Odd`, `X-ON/X-OFF / None`) trực tiếp trên Web nội bộ mà không cần nạp lại code.
    - Mặc định cổng máy in đặt sẵn `2400 bps, 7-N-1, X-ON/X-OFF` khớp với tờ Self-Test của Citizen CT-S310II.
