@@ -8,6 +8,9 @@
 #include <ArduinoJson.h>
 #include <time.h>
 #include <math.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 // ===== 1. CAU HINH MAC DINH (DU PHONG KHI CHUA CAI QUA WEB AP) =====
 const char* DEFAULT_WIFI_SSID = "TEN_WIFI_CO_INTERNET";
@@ -23,6 +26,17 @@ const char* AP_PASS = "12345678";
 #define DD60A_TX_PIN   17
 #define PRINTER_RX_PIN 18
 #define PRINTER_TX_PIN 19
+
+// ===== 3.1. CHAN MAN HINH OLED 0.91 INCH I2C (SSD1306 128x32) =====
+#define OLED_SDA_PIN 21
+#define OLED_SCL_PIN 22
+#define OLED_WIDTH   128
+#define OLED_HEIGHT  32
+#define OLED_ADDR    0x3C
+
+// ===== 3.2. CHAN DEN LED BAO WI-FI =====
+#define LED_RED_PIN   25  // Sang khi mat ket noi Wi-Fi
+#define LED_GREEN_PIN 26  // Sang khi da ket noi Wi-Fi
 
 // ===== 4. BO DEM GOM MAU DO (TOI DA 150 MAU THEO MANUAL DD60A) =====
 #define MAX_SAMPLES 150
@@ -72,6 +86,10 @@ unsigned long lastStatPacketTime = 0;
 Preferences prefs;
 WebServer   webServer(80);
 DNSServer   dnsServer;
+Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, -1);
+bool oledReady = false;
+unsigned long lastOledCheck = 0;
+String lastOledKey = "";
 
 // ===== LUU / NAP NVS (FLASH) =====
 void loadWifiFromNVS() {
@@ -683,15 +701,122 @@ void syncFirebaseTask(void* pvParameters) {
   }
 }
 
+uint8_t scanI2cPair(int sda, int scl) {
+  Wire.end();
+  Wire.begin(sda, scl);
+  Wire.setClock(100000);
+  delay(20);
+  uint8_t found = 0;
+  for (uint8_t addr = 1; addr < 127; addr++) {
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) {
+      Serial.printf("I2C FOUND (SDA=%d, SCL=%d): 0x%02X\n", sda, scl, addr);
+      if (addr == 0x3C || addr == 0x3D) found = addr;
+    }
+  }
+  return found;
+}
+
+void initOled() {
+  delay(150); // Cho OLED on dinh nguon sau khi cap dien
+  uint8_t foundAddr = scanI2cPair(OLED_SDA_PIN, OLED_SCL_PIN);
+  if (foundAddr == 0) {
+    // Thu dao cap chan 21 <-> 22 phong truong hop cam nguoc SDA/SCK
+    foundAddr = scanI2cPair(OLED_SCL_PIN, OLED_SDA_PIN);
+  }
+  if (foundAddr == 0) {
+    Wire.end();
+    Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN);
+    Wire.setClock(100000);
+    Serial.println("I2C OLED NOT FOUND on (21,22) or (22,21)");
+    foundAddr = OLED_ADDR;
+  }
+
+  if (display.begin(SSD1306_SWITCHCAPVCC, foundAddr)) {
+    oledReady = true;
+    Serial.printf("OLED READY at 0x%02X\n", foundAddr);
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    display.setTextWrap(false);
+    display.setTextSize(1);
+    display.setCursor(0, 12);
+    display.println("DD60A BRIDGE READY");
+    display.display();
+  } else {
+    oledReady = false;
+    Serial.println("OLED BEGIN FAILED");
+  }
+}
+
+void updateOledDisplay(bool force) {
+  if (!oledReady) return;
+
+  PrintConfig c = getConfigSnapshot();
+  bool wifiOk = (WiFi.status() == WL_CONNECTED);
+  String key = c.type + "|" + c.subType + "|" + String(c.circ, 2) + "|" +
+               String(c.isManualCirc) + "|" + String(wifiOk) + "|" + String(batchSampleCount);
+  if (!force && key == lastOledKey) return;
+  lastOledKey = key;
+
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextWrap(false);
+
+  // Hang 1 (y=0, co 1): Loai & Phan loai + trang thai Wi-Fi / So mau
+  display.setTextSize(1);
+  display.setCursor(0, 0);
+  if (c.circ > 0.0) {
+    String label = c.type + ":" + (c.isManualCirc ? "Nhap tay" : c.subType);
+    if (label.length() > 17) label = label.substring(0, 17);
+    display.print(label);
+  } else {
+    display.print("Loai: null");
+  }
+
+  display.setCursor(104, 0);
+  if (batchSampleCount > 0) {
+    display.print("D:");
+    display.print(batchSampleCount);
+  } else {
+    display.print(wifiOk ? "[OK]" : "[OF]");
+  }
+  display.drawFastHLine(0, 10, 128, SSD1306_WHITE);
+
+  // Hang 2 (y=14, co 2 - chu to): Kich co chu vi
+  display.setTextSize(2);
+  display.setCursor(0, 14);
+  if (c.circ > 0.0) {
+    display.print(formatRounded(c.circ, 2));
+    display.print(" mm");
+  } else {
+    display.print("null");
+  }
+
+  display.display();
+}
+
+void updateWifiLeds() {
+  bool wifiOk = (WiFi.status() == WL_CONNECTED);
+  digitalWrite(LED_GREEN_PIN, wifiOk ? HIGH : LOW);
+  digitalWrite(LED_RED_PIN,   wifiOk ? LOW  : HIGH);
+}
+
 void setup() {
   Serial.begin(115200);
   Serial1.begin(2400, SERIAL_7N2, DD60A_RX_PIN, DD60A_TX_PIN);
+
+  pinMode(LED_RED_PIN, OUTPUT);
+  pinMode(LED_GREEN_PIN, OUTPUT);
+  updateWifiLeds();
 
   cfgMutex = xSemaphoreCreateMutex();
   loadConfigFromNVS();
   loadWifiFromNVS();
   loadPrinterConfigFromNVS();
   applyPrinterSerial();
+
+  initOled();
+  updateOledDisplay(true);
 
   // Bat AP+STA song song: luon co the ket noi "DD60A-Setup" de doi Wi-Fi & cau hinh may in
   WiFi.mode(WIFI_AP_STA);
@@ -743,5 +868,11 @@ void loop() {
   if (pendingTestPrint && !receivingPacket && !Serial1.available() && batchSampleCount == 0 && lastStatPacketTime == 0) {
     pendingTestPrint = false;
     runTestPrint();
+  }
+
+  if (!receivingPacket && !Serial1.available() && (millis() - lastOledCheck > 500)) {
+    lastOledCheck = millis();
+    updateWifiLeds();
+    updateOledDisplay(false);
   }
 }

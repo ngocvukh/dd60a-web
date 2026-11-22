@@ -1,6 +1,6 @@
 # BIÊN BẢN BÀN GIAO CÔNG VIỆC — DỰ ÁN CẦU NỐI IN NHIỆT BORGWALDT DD60A
 
-**Ngày bàn giao:** 20/11/2026  
+**Ngày cập nhật bàn giao:** 22/11/2026  
 **Repository GitHub:** `https://github.com/ngocvukh/dd60a-web`  
 **Link Web QR (GitHub Pages):** `https://ngocvukh.github.io/dd60a-web/`  
 **Firebase Realtime Database:** `https://dd60a-244ce-default-rtdb.asia-southeast1.firebasedatabase.app` *(Singapore `asia-southeast1`)*
@@ -14,7 +14,9 @@
 | **Firebase Realtime Database** | Hoàn tất | Đã tạo database, cấu hình Rules đọc/ghi lâu dài cho `/dd60a` và `/dd60a_presets` (không giới hạn 30 ngày). |
 | **Web cấu hình qua QR** | Hoàn tất | Deploy [index.html](file:///d:/DD%2060%20A/index.html) lên GitHub Pages (`https://ngocvukh.github.io/dd60a-web/`). |
 | **Ảnh nhãn QR để in** | Hoàn tất | Tạo sẵn file [QR_DD60A.png](file:///d:/DD%2060%20A/QR_DD60A.png) (`680 x 830 px`) gồm mã QR Web + thông tin Wi-Fi `DD60A-Setup` (`12345678`, `http://192.168.4.1`). |
-| **Firmware ESP32** | Hoàn tất & Đã nạp | Đã biên dịch và nạp [dd60a_bridge.ino](file:///d:/DD%2060%20A/dd60a_bridge/dd60a_bridge.ino) lên mạch ESP32 (`ESP32-D0WD-V3`) qua cổng `COM10`. |
+| **Firmware ESP32** | Hoàn tất & Đã nạp | Đã biên dịch (`1220608 bytes`) và nạp [dd60a_bridge.ino](file:///d:/DD%2060%20A/dd60a_bridge/dd60a_bridge.ino) lên ESP32 qua `COM9`, hỗ trợ OLED 0.91" (`0x3C`) và LED báo Wi-Fi (`GPIO 25`/`26`). |
+| **Phần cứng & Sơ đồ đấu dây** | Đã test thông mạch | Đã cập nhật sơ đồ đảo chân thực tế cho cả **MAX3232 #1** (`RXD -> GPIO 16`, `TXD -> GPIO 17`) và **MAX3232 #2** (`RXD -> GPIO 18`, `TXD -> GPIO 19`). |
+| **Công cụ test PowerShell** | Hoàn tất | Tạo sẵn [test_dd60a_send.ps1](file:///d:/DD%2060%20A/test_dd60a_send.ps1) (giả lập DD60A `2400 7-N-2`) và [test_rs232_monitor.ps1](file:///d:/DD%2060%20A/test_rs232_monitor.ps1) (giám sát đầu ra RS-232). |
 | **Tài liệu hướng dẫn** | Hoàn tất | Đã tách gọn thành 4 hạng mục trong `huong_dan/` và mục lục tại [HUONG_DAN_TRIEN_KHAI.md](file:///d:/DD%2060%20A/HUONG_DAN_TRIEN_KHAI.md). |
 
 ---
@@ -40,14 +42,19 @@
 
 ## 3. Kết quả kiểm thử đã xác minh
 
-- **Kiểm thử trên phần cứng ESP32 thật (`COM10`):**
-  - ESP32 kết nối Wi-Fi thành công, đồng bộ giờ thực tế NTP (`20/11/2026 00:09`).
-  - Đọc được cấu hình lưu từ Web qua Firebase (`Test`, `Dau loc - Nhap tay (24.50mm)`), tự động reset cờ `"testPrint": false` và xuất đúng định dạng phiếu in ra `Serial` (`COM10`).
+- **Kiểm thử ESP32 + Firebase + NTP (`20/11/2026`, `COM10`):**
+  - ESP32 kết nối Wi-Fi thành công, đồng bộ giờ thực tế NTP, đọc cấu hình từ Web qua Firebase, tự động reset cờ `"testPrint": false`.
+- **Kiểm thử phần cứng & toàn tuyến RS-232 (`22/11/2026`, `COM9` & `COM11`):**
+  - **OLED 0.91" (`128x32`):** Nhận địa chỉ I2C `0x3C` (`SDA=21`, `SCL=22`), hiển thị thông số bình thường.
+  - **Đầu ra RS-232 (`ESP32 -> MAX3232 #2 -> COM11`):** Nhận đủ `427 bytes` phiếu in thử ở `9600, 7-N-1` (gồm lệnh `ESC @` và cắt giấy `GS V 66 0`).
+  - **Đầu vào RS-232 (`COM11 -> MAX3232 #1 -> ESP32 -> COM9`):** Đẩy 10 khung giả lập DD60A (`2400, 7-N-2`, `0000`–`0004` & `FF01`–`FF05`), ESP32 giải mã, ghép cấu hình Firebase (`MAU : Test`, `LOAI: Dau loc - Nhap tay`, `DO: Vugggg`), tính `MAX/MIN/MEAN/STD/V.C. (0.75%)` và xuất phiếu hoàn chỉnh qua `COM9`.
 
 ---
 
-## 4. Việc cần làm tiếp theo (khi có đủ linh kiện)
+## 4. Việc cần làm tiếp theo (triển khai tại hiện trường)
 
-1. Lắp **2x module MAX3232 (3.3V)** theo sơ đồ trong [03_LAP_DAT_PHAN_CUNG.md](file:///d:/DD%2060%20A/huong_dan/03_LAP_DAT_PHAN_CUNG.md).
-2. Cắm vào máy **Borgwaldt DD60A** và **Citizen CT-S310II**, thực hiện test đo thật và cắt giấy theo [04_KIEM_THU_VA_XU_LY_SU_CO.md](file:///d:/DD%2060%20A/huong_dan/04_KIEM_THU_VA_XU_LY_SU_CO.md).
-3. In file [QR_DD60A.png](file:///d:/DD%2060%20A/QR_DD60A.png) dán tại vị trí đo.
+1. Trên Web QR (`https://ngocvukh.github.io/dd60a-web/`), đổi lại chu vi thực tế (ví dụ `24.15` mm) thay cho giá trị test `2222222.01` mm.
+2. Kiểm tra lại cấu hình Serial máy in tại Captive Portal `DD60A-Setup` (`http://192.168.4.1`) đang ở **`2400 bps | 7-N-1 | X-ON/X-OFF`** khớp với tờ Self-Test của **Citizen CT-S310II**.
+3. Cắm thực tế vào máy **Borgwaldt DD60A** (cổng 35) và **Citizen CT-S310II**, thực hiện test đo thật và cắt giấy theo [04_KIEM_THU_VA_XU_LY_SU_CO.md](file:///d:/DD%2060%20A/huong_dan/04_KIEM_THU_VA_XU_LY_SU_CO.md).
+4. In file [QR_DD60A.png](file:///d:/DD%2060%20A/QR_DD60A.png) dán tại vị trí đo.
+5. *(Tùy chọn)* Khi có điện trở `220Ω`–`330Ω` thì lắp thêm 2 đèn LED báo Wi-Fi vào `GPIO 25` / `GPIO 26` (không bắt buộc vì đã có màn hình OLED).

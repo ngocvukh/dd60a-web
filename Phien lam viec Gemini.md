@@ -109,10 +109,10 @@ Thay thế cụm máy in kim tích hợp (đã cũ, mờ mực) trên máy đo t
 | :--- | :--- | :--- |
 | **VCC** | `3V3` trên ESP32 | `3V3` trên ESP32 |
 | **GND** | `GND` trên ESP32 | `GND` trên ESP32 |
-| **TXD** (TTL) | `GPIO 16` (RX1) | `GPIO 18` (RX2) |
-| **RXD** (TTL) | `GPIO 17` (TX1) | `GPIO 19` (TX2) |
+| **TXD** (TTL) | `GPIO 17` (TX1) | `GPIO 19` (TX2) |
+| **RXD** (TTL) | `GPIO 16` (RX1) | `GPIO 18` (RX2) |
 
-*(Lưu ý khi test: Một số module MAX3232 giá rẻ in ngược ký hiệu TXD/RXD phía TTL. Nếu không nhận/gửi được tín hiệu, đảo cặp chân 16/17 hoặc 18/19).*
+*(Lưu ý khi test: Đã cập nhật cả Module #1 và Module #2 theo thực tế test mạch (`RXD` -> `GPIO 16`/`18`, `TXD` -> `GPIO 17`/`19` do ký hiệu in ngược trên mạch MAX3232). Nếu đổi module khác lô mà không nhận/gửi được tín hiệu, đảo cặp chân 16/17 hoặc 18/19).*
 
 ---
 
