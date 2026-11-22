@@ -734,8 +734,9 @@
         });
         if (!res.ok) throw new Error("HTTP " + res.status);
 
-        showQrBanner("banner-ok", `<div class="banner-title">✅ Đã đẩy lên ESP32! Đang chuyển hướng...</div>`);
-        window.location.replace("https://www.google.com");
+        showQrBanner("banner-ok", `<div class="banner-title">✅ Đã đẩy lên ESP32! Đang đóng trang...</div>`);
+        try { window.close(); } catch (err) {}
+        setTimeout(() => { window.location.replace("https://www.google.com"); }, 250);
         return payload;
       } catch (e) {
         console.error(e);
