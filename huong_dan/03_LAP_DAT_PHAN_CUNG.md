@@ -23,8 +23,15 @@ Vì ESP32 mặc định đang chạy **`2400 bps | 7-N-1 | X-ON/X-OFF`** khớp 
 - **Dây Dupont Cái–Cái (Female–Female)** chuẩn 2.54mm (8 sợi cho 2x MAX3232 + 4 sợi cho OLED + dây nối LED).
 - **1x Nguồn 5V USB** (củ sạc điện thoại ổn định) cấp cho ESP32.
 - **Cáp RS-232:**
-  - Dây nối cổng số 35 trên **Borgwaldt DD60A** vào cổng DB9 của **Module MAX3232 #1**.
-  - Dây 9-pin ra 25-pin nguyên bản nối cổng DB9 của **Module MAX3232 #2** vào **Citizen CT-S310II**.
+  - **Đầu vào (`Borgwaldt DD60A cổng 35 (25-pin)` -> `Module MAX3232 #1 (9-pin)`):**
+    - Nếu dùng cáp `25-pin sang 9-pin` nguyên bản ghép nối tiếp cáp `9-pin sang 9-pin`, tại đầu `9-pin` của cáp `25-9` cần **đảo chéo chân `2 ↔ 3`** và **hàn nối chập 3 chân `4 – 6 – 7` với nhau** (để cấp vòng tín hiệu bắt tay `DTR 20 -> DSR 6 & CTS 5` cho DD60A).
+    - Đo thông mạch xuyên suốt từ đầu `25-pin` (cắm DD60A) tới đầu `9-pin` cuối cùng (cắm `MAX3232 #1`) phải đạt:
+      - `DB25 Chân 2 (TXD)` ↔ `DB9 Chân 3 (RXD MAX3232 #1)`
+      - `DB25 Chân 3 (RXD)` ↔ `DB9 Chân 2 (TXD MAX3232 #1)`
+      - `DB25 Chân 7 (GND)` ↔ `DB9 Chân 5 (GND MAX3232 #1)`
+      - `DB25 Chân 5 (CTS)` ↔ `DB25 Chân 6 (DSR)` ↔ `DB25 Chân 20 (DTR)` *(thông qua mối chập `4 – 6 – 7` trên đầu 9-pin)*
+    - Xem hình minh họa chi tiết tại [so_do_dau_day_25_9pin.png](../so_do_dau_day_25_9pin.png).
+  - **Đầu ra (`Module MAX3232 #2 (9-pin)` -> `Citizen CT-S310II (9-pin)`):** Dùng cáp `9-pin` thẳng (`2–2`, `3–3`, `5–5`).
 
 ### 2.2. Sơ đồ đấu dây (ESP32 <-> 2x MAX3232)
 *(Ngắt toàn bộ nguồn điện trước khi cắm dây Dupont)*

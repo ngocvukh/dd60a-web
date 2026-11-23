@@ -22,7 +22,7 @@
 1. Bật máy **Borgwaldt DD60A**, cắm cáp RS-232 vào Module #1.
 2. Trên Web, chọn đúng loại điếu/đầu lọc cần đo (hoặc gõ tay chu vi mới) rồi bấm **LƯU CẤU HÌNH**.
 3. Tiến hành đo một loạt thử (1 mẫu hoặc nhiều mẫu >5 điếu) trên DD60A và bấm xuất/kết thúc loạt đo:
-   - ESP32 sẽ gom toàn bộ các mẫu (`0001`–`0150`) và chờ đến khi nhận được gói tin kết thúc **`FF05`** mới tiến hành in toàn bộ phiếu ra cùng lúc (kèm timeout dự phòng `800 ms` sau `FF01`–`FF04` nếu máy không gửi `FF05`).
+   - ESP32 sẽ gom toàn bộ các mẫu (`0001`–`0150`) và chờ đến khi nhận được gói tin kết thúc **`FF05`** mới tiến hành in toàn bộ phiếu ra cùng lúc (kèm timeout dự phòng `6000 ms` sau `FF01`–`FF04` nếu máy chỉ đo 1 mẫu và không gửi `FF05`; lưu ý thực tế DD60A vừa in kim vừa gửi `FF01`–`FF05` cách nhau `2.1s – 3.3s` mỗi gói).
    - *(Nếu người đo chưa bấm kết thúc trên DD60A mà sau đó lại đo đè lại STT mẫu cũ hoặc bắt đầu loạt mới, ESP32 sẽ tự động đẩy in phiếu cũ trước kèm dòng cảnh báo `! CANH BAO: Mau da do chua duoc in truoc !` rồi mới gom mẫu mới).*
 4. Kiểm tra phiếu in ra từ Citizen:
    - Đủ phần đầu (`MAU`, `LOAI`, `NGAY | DO`).
@@ -37,7 +37,7 @@
 | :--- | :--- | :--- |
 | Bấm **LƯU & IN THỬ** trên Web nhưng máy in không chạy | ESP32 chưa kết nối Wi-Fi (hoặc Wi-Fi 5GHz), sai link `FIREBASE_URL`, hoặc đảo ngược dây `18/19` | Mở Serial Monitor (`115200`) kiểm tra kết nối; kiểm tra link `/dd60a.json`; thử đảo cặp dây `GPIO 18` và `GPIO 19` trên Module #2 |
 | Máy in ra chữ loằng ngoằng / ký tự lạ hoặc không phản hồi | `Baud rate`, `Data bits`, `Parity` hoặc `Handshaking` trên ESP32 chưa khớp với máy in Citizen | Kết nối Wi-Fi `DD60A-Setup` (`192.168.4.1`) và chọn lại đúng `Baud rate` (`1200`–`115200`), `Data bits` (`7`/`8`), `Parity` (`None`/`Even`/`Odd`) và `Handshaking` (`X-ON/X-OFF`/`None`) theo tờ Self-Test của máy in |
-| Bấm in thử chạy bình thường nhưng đo trên DD60A không thấy in | Đấu ngược chân TX/RX trên Module #1, hoặc cáp nối DD60A lỏng | Thử đảo cặp dây `GPIO 16` và `GPIO 17` trên Module #1; kiểm tra lại cáp RS-232 cổng 35 trên DD60A |
+| Bấm in thử chạy bình thường nhưng đo trên DD60A không thấy in | Ngược chân `2 ↔ 3` trên cáp DB9, thiếu chập bắt tay `4 – 6 – 7` (`DSR/DTR/CTS`), hoặc ngược dây TTL `16/17` | Kiểm tra cáp từ `DD60A (25-pin)` sang `MAX3232 #1 (9-pin)` phải thông `DB25(2) ↔ DB9(3)`, `DB25(7) ↔ DB9(5)` và **chập 3 chân `4 – 6 – 7`** trên đầu 9-pin (`DB25 chân 5, 6, 20` thông nhau); mở Serial Monitor (`115200`) kiểm tra log `[DD60A RAW]` |
 | Web báo `Lỗi kết nối mạng!` khi bấm Lưu | Chưa mở Rules trên Firebase hoặc sai `FIREBASE_BASE` trong `index.html` | Kiểm tra lại Hạng mục 1 (mục Rules) và đảm bảo `FIREBASE_BASE` không có `/dd60a.json` ở cuối |
 
 ---

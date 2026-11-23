@@ -78,6 +78,8 @@ volatile bool     isScanningWifi         = false;
 String packetBuffer    = "";
 bool   receivingPacket = false;
 String pendingSample   = "";
+bool          rawDebugLineOpen = false;
+unsigned long lastRawRxTime    = 0;
 
 SampleItem batchSamples[MAX_SAMPLES];
 int    batchSampleCount = 0;
@@ -567,6 +569,11 @@ void printFullBatch(bool isUnfinishedWarning) {
 
 void processPacket(String data) {
   data.trim();
+  if (rawDebugLineOpen) {
+    Serial.println();
+    rawDebugLineOpen = false;
+  }
+  Serial.printf("[DD60A PKT] '%s' (len=%d)\n", data.c_str(), data.length());
   if (data.length() < 11) return;
 
   String code   = data.substring(0, 4);
@@ -874,7 +881,7 @@ void updateWifiLeds() {
 
 void setup() {
   Serial.begin(115200);
-  Serial1.begin(2400, SERIAL_7N2, DD60A_RX_PIN, DD60A_TX_PIN);
+  Serial1.begin(2400, SERIAL_7N1, DD60A_RX_PIN, DD60A_TX_PIN);
 
   pinMode(LED_RED_PIN, OUTPUT);
   pinMode(LED_GREEN_PIN, OUTPUT);
@@ -905,6 +912,7 @@ void setup() {
   webServer.begin();
 
   Serial.println("He thong san sang! AP: DD60A-Setup (IP: 192.168.4.1)");
+  Serial.println("DD60A Serial1 READY: 2400 7-N-1 (RX=GPIO16, TX=GPIO17) [RAW+PKT DEBUG ON]");
 
   // Chay tac vu Wi-Fi / Firebase o Core 0 de Core 1 chuyen tam nhan DD60A & in
   xTaskCreatePinnedToCore(syncFirebaseTask, "FirebaseTask", 8192, NULL, 1, NULL, 0);
@@ -916,7 +924,16 @@ void loop() {
   checkPrinterFlowControl();
 
   while (Serial1.available()) {
-    byte b = Serial1.read() & 0x7F;
+    byte raw = Serial1.read();
+    byte b = raw & 0x7F;
+    if (!rawDebugLineOpen) {
+      Serial.print("[DD60A RAW]");
+      rawDebugLineOpen = true;
+    }
+    Serial.printf(" %02X", raw);
+    if (b >= 32 && b <= 126) Serial.printf("(%c)", (char)b);
+    lastRawRxTime = millis();
+
     if (b == 0x02) {
       packetBuffer = "";
       receivingPacket = true;
@@ -931,8 +948,14 @@ void loop() {
     }
   }
 
-  // Fallback: neu do 1 mau ma may dung o FF01..FF04 khong gui FF05, tu in sau 800ms
-  if (!receivingPacket && !Serial1.available() && lastStatPacketTime > 0 && (millis() - lastStatPacketTime > 800)) {
+  if (rawDebugLineOpen && (millis() - lastRawRxTime > 150)) {
+    Serial.println();
+    rawDebugLineOpen = false;
+  }
+
+  // Fallback: neu do 1 mau ma may dung o FF01..FF04 khong gui FF05, tu in sau 6000ms
+  // (Thuc te DD60A vua in kim vua gui FF01->FF05 cach nhau 2.1s - 3.3s moi goi)
+  if (!receivingPacket && !Serial1.available() && lastStatPacketTime > 0 && (millis() - lastStatPacketTime > 6000)) {
     printFullBatch(false);
   }
 
